@@ -49,6 +49,56 @@ annual_full['5년_이동평균'] = (
 )
 
 # ─────────────────────────────────────────────────────────
+# 결측 구간 경계 X 마커 생성 헬퍼
+# ─────────────────────────────────────────────────────────
+def add_gap_x_markers(df, y_col, marker_size=12):
+    """
+    y_col 에서 NaN 인 구간(경계)의
+    마지막 유효 연도와 첫 유효 연도 지점에 X 마커 추가.
+    """
+    traces = []
+
+    # 1) 선 그래프
+    traces.append(go.Scatter(
+        x=df['연도'],
+        y=df[y_col],
+        mode='lines',
+        name=f'{y_col}',
+        line=dict(color='#E63946', width=2),
+        marker=dict(symbol='circle', size=4, color='#E63946'),
+        connectgaps=False
+    ))
+
+    # 2) 결측 구간 경계 탐지
+    nan_idx = df[y_col].isna()
+    boundaries = []
+    in_nan = False
+    for i, is_nan in enumerate(nan_idx):
+        if is_nan and not in_nan:
+            # 결측 시작: 직전 유효 연도가 경계
+            if i > 0:
+                boundaries.append(i - 1)
+            in_nan = True
+        elif not is_nan and in_nan:
+            # 결측 끝: 직후 유효 연도가 경계
+            if i < len(df) - 1:
+                boundaries.append(i)
+            in_nan = False
+
+    # 3) X 마커 추가
+    if boundaries:
+        traces.append(go.Scatter(
+            x=df['연도'].iloc[boundaries],
+            y=df[y_col].iloc[boundaries],
+            mode='markers',
+            name='결측 경계 (X)',
+            marker=dict(symbol='x', size=marker_size, color='#FF0000', line=dict(width=1, color='#888888')),
+            showlegend=False
+        ))
+
+    return traces
+
+# ─────────────────────────────────────────────────────────
 # 사이드바 연도 범위 슬라이더
 # ─────────────────────────────────────────────────────────
 year_range = st.sidebar.slider(
@@ -72,27 +122,13 @@ mean_min  = selected['평균최저기온'].mean()
 # ─────────────────────────────────────────────────────────
 fig = go.Figure()
 
-# 연평균기온 꺾은선 (결측 연도는 NaN → 선이 끊김)
-fig.add_trace(go.Scatter(
-    x=annual_full['연도'],
-    y=annual_full['연평균기온'],
-    mode='lines+markers',
-    name='연평균기온',
-    line=dict(color='#E63946', width=2),
-    marker=dict(symbol='circle', size=4, color='#E63946'),
-    connectgaps=False
-))
+# 연평균기온 꺾은선 + 결측 경계 X 마커
+for trace in add_gap_x_markers(annual_full, '연평균기온'):
+    fig.add_trace(trace)
 
-# 5년 이동평균선 (결측 구간 포함 자동 단절)
-fig.add_trace(go.Scatter(
-    x=annual_full['연도'],
-    y=annual_full['5년_이동평균'],
-    mode='lines+markers',
-    name='5년 이동평균',
-    line=dict(color='#1D3557', width=2),
-    marker=dict(symbol='circle', size=3, color='#1D3557'),
-    connectgaps=False
-))
+# 5년 이동평균선 + 결측 경계 X 마커
+for trace in add_gap_x_markers(annual_full, '5년_이동평균'):
+    fig.add_trace(trace)
 
 fig.update_layout(
     title='서울 연평균기온 및 5년 이동평균',
@@ -109,8 +145,11 @@ fig.update_layout(
 # ─────────────────────────────────────────────────────────
 st.title('서울 연평균기온 분석')
 
+# 그래프 + 안내 문구
 st.plotly_chart(fig, use_container_width=True)
+st.caption('*1950년 9월부터 1953년 11월까지의 기온 값이 누락되어 있으므로 그래프를 해석할 때 주의하십시오.')
 
+# 선택 구간 통계
 st.subheader('선택 구간 통계')
 col1, col2, col3 = st.columns(3)
 with col1:
