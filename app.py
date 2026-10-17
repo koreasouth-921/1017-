@@ -51,12 +51,10 @@ annual_full['5년_이동평균'] = (
 # ─────────────────────────────────────────────────────────
 # 결측 구간 경계 X 마커 생성 헬퍼
 # ─────────────────────────────────────────────────────────
-def add_gap_x_markers(df, y_col, line_color, marker_size=12):
+def add_gap_x_markers(df, y_col, marker_size=12):
     """
     y_col 에서 NaN 인 구간(경계)의
     마지막 유효 연도와 첫 유효 연도 지점에 X 마커 추가.
-    - line_color : 그래프 선 색상 (데이터 점 색상도 동일하게 적용)
-    - marker_color : X 마커 색상
     """
     traces = []
 
@@ -65,9 +63,9 @@ def add_gap_x_markers(df, y_col, line_color, marker_size=12):
         x=df['연도'],
         y=df[y_col],
         mode='lines',
-        name=y_col,
-        line=dict(color=line_color, width=2),
-        marker=dict(symbol='circle', size=4, color=line_color),
+        name=f'{y_col}',
+        line=dict(color='#E63946', width=2),
+        marker=dict(symbol='circle', size=4, color='#E63946'),
         connectgaps=False
     ))
 
@@ -87,14 +85,14 @@ def add_gap_x_markers(df, y_col, line_color, marker_size=12):
                 boundaries.append(i)
             in_nan = False
 
-    # 3) X 마커 추가 (선 색상과 동일하게)
+    # 3) X 마커 추가
     if boundaries:
         traces.append(go.Scatter(
             x=df['연도'].iloc[boundaries],
             y=df[y_col].iloc[boundaries],
             mode='markers',
             name='결측 경계 (X)',
-            marker=dict(symbol='x', size=marker_size, color=marker_color, line=dict(width=1, color='#888888')),
+            marker=dict(symbol='x', size=marker_size, color='#FF0000', line=dict(width=1, color='#888888')),
             showlegend=False
         ))
 
@@ -124,12 +122,12 @@ mean_min  = selected['평균최저기온'].mean()
 # ─────────────────────────────────────────────────────────
 fig = go.Figure()
 
-# 연평균기온 꺾은선 (파란색) + 결측 경계 X 마커 (파란색)
-for trace in add_gap_x_markers(annual_full, '연평균기온', line_color='#1A73E8', marker_color='#1A73E8'):
+# 연평균기온 꺾은선 + 결측 경계 X 마커
+for trace in add_gap_x_markers(annual_full, '연평균기온'):
     fig.add_trace(trace)
 
-# 5년 이동평균선 (빨간색) + 결측 경계 X 마커 (빨간색)
-for trace in add_gap_x_markers(annual_full, '5년_이동평균', line_color='#D93025', marker_color='#D93025'):
+# 5년 이동평균선 + 결측 경계 X 마커
+for trace in add_gap_x_markers(annual_full, '5년_이동평균'):
     fig.add_trace(trace)
 
 fig.update_layout(
